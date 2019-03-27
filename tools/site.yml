@@ -5,6 +5,11 @@
   become_user: root
   gather_facts: True
 
+  vars:
+    db: iedb
+    dbuser: iedbadmin
+    schema: upstream
+
   handlers:
     - name: restart postgresql
       service: name=postgresql state=restarted
@@ -26,3 +31,47 @@
 
     - name: Start the PostgreSQL service
       service: name=postgresql state=started enabled=yes
+
+    - name: Create the iedb database
+      become_user: postgres
+      postgresql_db:
+        name: "{{ db }}"
+
+    - name: Create the iedb admin user
+      become_user: postgres
+      postgresql_user:
+        db: "{{ db }}"
+        name: "{{ dbuser }}"
+
+    - name: Grant privileges to the iedb admin user
+      become_user: postgres
+      postgresql_privs:
+        database: "{{ db }}"
+        privs: ALL
+        type: database
+        role: "{{ dbuser }}"
+
+    - name: Create the upstream schema
+      become_user: postgres
+      # There is some sort of bug either in ansible or in the postgresql_schema module,
+      # so until that gets fixed in a new version, we comment out this code for now and
+      # do it the hard way with 'command':
+      # postgresql_schema:
+      #   database: "{{ db }}"
+      #   name: "upstream"
+      #   owner: "{{ dbuser }}"
+      vars:
+        schemaname: upstream
+        query: >-
+          DO $$
+            BEGIN
+              IF NOT EXISTS (
+                SELECT schema_name
+                FROM information_schema.schemata
+                WHERE schema_name = '{{ schemaname }}'
+              )
+              THEN
+                EXECUTE 'CREATE SCHEMA {{ schemaname }} AUTHORIZATION {{ dbuser }}';
+              END IF;
+            END $$;
+      command: psql -d "{{ db }}" -c "{{ query }}"
