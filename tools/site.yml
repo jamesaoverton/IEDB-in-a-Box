@@ -1,7 +1,28 @@
 ---
 - hosts: all
+  user: vagrant
   become: yes
   become_user: root
+  gather_facts: True
+
+  handlers:
+    - name: restart postgresql
+      service: name=postgresql state=restarted
+
   tasks:
-  - name: Install PostgreSQL server
-    yum: name=postgresql-server state=latest
+    - name: Install PostgreSQL packages
+      yum: name={{ item }} state=latest
+      with_items:
+        - postgresql-server
+        # Client:
+        - postgresql
+        # Python library required to use postgres ansible modules:
+        - python-psycopg2
+
+    - name: Initialise the PostgreSQL db
+      command: postgresql-setup initdb
+      args:
+        creates: /var/lib/pgsql/initdb.log
+
+    - name: Start the PostgreSQL service
+      service: name=postgresql state=started enabled=yes
