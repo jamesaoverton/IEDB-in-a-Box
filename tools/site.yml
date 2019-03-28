@@ -29,6 +29,13 @@
       args:
         creates: /var/lib/pgsql/initdb.log
 
+    - name: Change local postgresql authentication to trust
+      lineinfile:
+        dest: /var/lib/pgsql/data/pg_hba.conf
+        regexp: '^(local\s+all\s+all\s+)peer$'
+        line: '\1trust'
+        backrefs: yes
+
     - name: Start the PostgreSQL service
       service: name=postgresql state=started enabled=yes
 
@@ -51,27 +58,26 @@
         type: database
         role: "{{ dbuser }}"
 
+    # There is some sort of bug either in ansible or in the postgresql_schema module,
+    # so until that gets fixed in a new version, we comment out this code for now and
+    # do it the hard way with the recipes below.
+    # postgresql_schema:
+    #   database: "{{ db }}"
+    #   name: "upstream"
+    #   owner: "{{ dbuser }}"
+
+    - name: Check if the upstream schema exists
+      become_user: postgres
+      vars:
+        query: >-
+          SELECT COUNT(1)
+          FROM information_schema.schemata
+          WHERE schema_name = '{{ schema }}'
+      command: psql -d "{{ db }}" -t -c "{{ query }}"
+      register: schema_exists
+      changed_when: False
+
     - name: Create the upstream schema
       become_user: postgres
-      # There is some sort of bug either in ansible or in the postgresql_schema module,
-      # so until that gets fixed in a new version, we comment out this code for now and
-      # do it the hard way with 'command':
-      # postgresql_schema:
-      #   database: "{{ db }}"
-      #   name: "upstream"
-      #   owner: "{{ dbuser }}"
-      vars:
-        schemaname: upstream
-        query: >-
-          DO $$
-            BEGIN
-              IF NOT EXISTS (
-                SELECT schema_name
-                FROM information_schema.schemata
-                WHERE schema_name = '{{ schemaname }}'
-              )
-              THEN
-                EXECUTE 'CREATE SCHEMA {{ schemaname }} AUTHORIZATION {{ dbuser }}';
-              END IF;
-            END $$;
-      command: psql -d "{{ db }}" -c "{{ query }}"
+      command: psql -d "{{ db }}" -c "CREATE SCHEMA {{ schema }} AUTHORIZATION {{ dbuser }}"
+      when: schema_exists.stdout | trim == '0'
