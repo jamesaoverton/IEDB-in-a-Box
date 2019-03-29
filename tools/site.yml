@@ -13,15 +13,22 @@
   handlers:
     - name: restart postgresql
       service: name=postgresql state=restarted
+    - name: restart mariadb
+      service: name=mariadb state=restarted
 
   tasks:
-    - name: Install PostgreSQL packages
+    - name: Install packages
       yum: name={{ item }} state=latest
       with_items:
+        - git
+        - wget
+        # Mariadb is a fork of MySQL used by CentOS. We use it for the initial loading
+        # of the dump files downloaded from the production IEDB, and then use pgloader
+        # to move the files from the MySQL server to the PostgresSQL server.
+        - mariadb-server
+        - mariadb
         - postgresql-server
-        # Client:
         - postgresql
-        # Python library required to use postgres ansible modules:
         - python-psycopg2
 
     - name: Initialise the PostgreSQL db
@@ -29,10 +36,17 @@
       args:
         creates: /var/lib/pgsql/initdb.log
 
-    - name: Change local postgresql authentication to trust
+    - name: Change local postgresql socket authentication to trust
       lineinfile:
         dest: /var/lib/pgsql/data/pg_hba.conf
-        regexp: '^(local\s+all\s+all\s+)peer$'
+        regexp: '^(local\s+all\s+all\s+)\w+$'
+        line: '\1trust'
+        backrefs: yes
+
+    - name: Change local postgresql host authentication to trust
+      lineinfile:
+        dest: /var/lib/pgsql/data/pg_hba.conf
+        regexp: '^(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)\w+$'
         line: '\1trust'
         backrefs: yes
 
@@ -43,6 +57,7 @@
       become_user: postgres
       postgresql_db:
         name: "{{ db }}"
+        owner: "{{ dbuser }}"
 
     - name: Create the iedb admin user
       become_user: postgres
@@ -81,3 +96,60 @@
       become_user: postgres
       command: psql -d "{{ db }}" -c "CREATE SCHEMA {{ schema }} AUTHORIZATION {{ dbuser }}"
       when: schema_exists.stdout | trim == '0'
+
+    - name: Download and extract Clozure CL
+      unarchive:
+        src: https://github.com/Clozure/ccl/releases/download/v1.11.5/ccl-1.11.5-linuxx86.tar.gz
+        dest: /opt
+        creates: /opt/ccl
+        remote_src: yes
+
+    - name: Copy ccl64 to /usr/bin/ccl
+      copy:
+        src: /opt/ccl/scripts/ccl64
+        dest: /usr/bin/ccl
+        force: no
+        mode: u=rwx,g=rx,o=rx
+        remote_src: yes
+
+    - name: Change CCL_DEFAULT_DIRECTORY in /usr/bin/ccl
+      lineinfile:
+        dest: /usr/bin/ccl
+        regexp: '^(  CCL_DEFAULT_DIRECTORY=)'
+        line: '\1/opt/ccl'
+        backrefs: yes
+
+    - name: Clone pgloader git repository
+      git:
+        repo: https://github.com/dimitri/pgloader.git
+        dest: /opt/pgloader
+
+    - name: Install CentOS 7 pgloader dependencies
+      command: bash bootstrap-centos7.sh chdir="/opt/pgloader"
+      args:
+        creates: /usr/lib64/libsybdb.so
+
+    - name: Build pgloader from source
+      make:
+        chdir: /opt/pgloader
+        target: pgloader
+        params:
+          CL: ccl
+          DYNSIZE: 128
+
+    - name: Copy pgloader to /usr/bin/pgloader
+      copy:
+        src: /opt/pgloader/build/bin/pgloader
+        dest: /usr/bin/pgloader
+        force: no
+        mode: u=rwx,g=rx,o=rx
+        remote_src: yes
+
+    - name: Change MariaDB max_allowed_packet_size
+      lineinfile:
+        dest: /etc/my.cnf
+        line: 'max_allowed_packet=64M'
+        insertafter: '^\[mysqld\]$'
+
+    - name: Start the MariaDB service
+      service: name=mariadb state=started enabled=yes
