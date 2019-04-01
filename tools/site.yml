@@ -8,7 +8,6 @@
   vars:
     db: iedb
     dbuser: iedbadmin
-    schema: upstream
 
   handlers:
     - name: restart postgresql
@@ -17,14 +16,15 @@
       service: name=mariadb state=restarted
 
   tasks:
-    - name: Install packages
+    - name: Install needed software packages
       yum: name={{ item }} state=latest
       with_items:
         - git
         - wget
-        # Mariadb is a fork of MySQL used by CentOS. We use it for the initial loading
-        # of the dump files downloaded from the production IEDB, and then use pgloader
-        # to move the files from the MySQL server to the PostgresSQL server.
+        # MariaDB is a fork of MySQL used by CentOS. We use it for the initial loading
+        # of the dump files downloaded from the production IEDB (which is also running a MariaDB
+        # instance), and then use pgloader to move the files from the MariaDB server to the
+        # PostgresSQL server.
         - mariadb-server
         - mariadb
         - postgresql-server
@@ -53,51 +53,24 @@
     - name: Start the PostgreSQL service
       service: name=postgresql state=started enabled=yes
 
-    - name: Create the iedb database
+    - name: Create the iedb database on the PostgreSQL server
       become_user: postgres
       postgresql_db:
         name: "{{ db }}"
-        owner: "{{ dbuser }}"
 
-    - name: Create the iedb admin user
+    - name: Create the iedb administrator user on the PostgreSQL server
       become_user: postgres
       postgresql_user:
         db: "{{ db }}"
         name: "{{ dbuser }}"
 
-    - name: Grant privileges to the iedb admin user
+    - name: Set the iedb database owner to the iedb administrator on the PostgreSQL server
       become_user: postgres
-      postgresql_privs:
-        database: "{{ db }}"
-        privs: ALL
-        type: database
-        role: "{{ dbuser }}"
+      postgresql_db:
+        name: "{{ db }}"
+        owner: "{{ dbuser }}"
 
-    # There is some sort of bug either in ansible or in the postgresql_schema module,
-    # so until that gets fixed in a new version, we comment out this code for now and
-    # do it the hard way with the recipes below.
-    # postgresql_schema:
-    #   database: "{{ db }}"
-    #   name: "upstream"
-    #   owner: "{{ dbuser }}"
-
-    - name: Check if the upstream schema exists
-      become_user: postgres
-      vars:
-        query: >-
-          SELECT COUNT(1)
-          FROM information_schema.schemata
-          WHERE schema_name = '{{ schema }}'
-      command: psql -d "{{ db }}" -t -c "{{ query }}"
-      register: schema_exists
-      changed_when: False
-
-    - name: Create the upstream schema
-      become_user: postgres
-      command: psql -d "{{ db }}" -c "CREATE SCHEMA {{ schema }} AUTHORIZATION {{ dbuser }}"
-      when: schema_exists.stdout | trim == '0'
-
-    - name: Download and extract Clozure CL
+    - name: Download and extract Clozure CL needed for pgloader
       unarchive:
         src: https://github.com/Clozure/ccl/releases/download/v1.11.5/ccl-1.11.5-linuxx86.tar.gz
         dest: /opt
