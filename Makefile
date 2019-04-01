@@ -17,5 +17,5 @@ refresh_maria_upstream:
 	zcat remote_dumps/iedb_public.sql.gz | mysql --user=root --database=upstream
 
 refresh_postgres_upstream:
-	psql -U iedbadmin -d iedb -c "DROP SCHEMA IF EXISTS upstream"
-	pgloader pgload_recipe.sql
+	psql -U iedbadmin -d iedb -c "DROP SCHEMA IF EXISTS upstream CASCADE"
+	pgloader tools/pgload_recipe.sql
