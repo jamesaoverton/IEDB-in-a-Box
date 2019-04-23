@@ -126,3 +126,23 @@
 
     - name: Start the MariaDB service
       service: name=mariadb state=started enabled=yes
+
+    - name: Add aliases and environment variables to /home/vagrant/.bashrc
+      lineinfile:
+        dest: /home/vagrant/.bashrc
+        insertafter: EOF
+        line: >-
+          PS1='\[\033[02;32m\][\u@\h \w]\$\[\033[00m\] ';
+          export PGDATABASE=iedb;
+          export PGUSER=iedbadmin;
+          alias rm='rm -i';
+          alias mv='mv -i';
+          alias cp='cp -i';
+          alias ls='ls -CF'
+
+    - name: Add color prompt to root .bashrc
+      lineinfile:
+        dest: /root/.bashrc
+        insertafter: EOF
+        line: >-
+          PS1='\[\033[00;31m\][\u@\h \w]\$\[\033[00m\] '

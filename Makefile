@@ -1,6 +1,6 @@
 .PHONY: refresh clean rdump refresh_maria_upstream refresh_postgres_upstream
 
-refresh: rdump refresh_maria_upstream refresh_postgres_upstream
+refresh: rdump refresh_maria_upstream refresh_postgres_upstream refresh_core
 
 clean:
 	rm -Rf remote_dumps
@@ -19,3 +19,7 @@ refresh_maria_upstream:
 refresh_postgres_upstream:
 	psql -U iedbadmin -d iedb -c "DROP SCHEMA IF EXISTS upstream CASCADE"
 	pgloader tools/pgload_recipe.sql
+
+refresh_core:
+	psql -U iedbadmin -d iedb -1 -f schemas/core.sql
+	psql -U iedbadmin -d iedb -1 -f populate_core.sql
