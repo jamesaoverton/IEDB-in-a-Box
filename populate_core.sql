@@ -1,7 +1,7 @@
+SELECT CONCAT(current_time, ' Loading core.object ...');
+
 INSERT INTO core.object (
-  epitope_object_id,
-  iv1_imm_object_id,
-  ivt_imm_object_id,
+  object_id,
   object_type,
   reference_id,
   sequence,
@@ -11,8 +11,6 @@ INSERT INTO core.object (
 )
 SELECT DISTINCT
   ce.e_object_id,
-  t.iv1_imm_object_id,
-  t.ivt_imm_object_id,
   o.object_type,
   t.reference_id,
   o.mol1_seq,
@@ -23,7 +21,34 @@ FROM upstream.tcell t
 INNER JOIN upstream.curated_epitope ce
   ON t.curated_epitope_id = ce.curated_epitope_id
 INNER JOIN upstream.object o
-  ON ce.e_object_id = o.object_id;
+  ON ce.e_object_id = o.object_id
+UNION
+SELECT DISTINCT
+  t.iv1_imm_object_id,
+  o.object_type,
+  t.reference_id,
+  o.mol1_seq,
+  classes.taxon_curie(o.organism_id),
+  o.mol1_source_id,
+  o.mol2_source_id
+FROM upstream.tcell t
+INNER JOIN upstream.object o
+  ON t.iv1_imm_object_id = o.object_id
+UNION
+SELECT DISTINCT
+  t.ivt_imm_object_id,
+  o.object_type,
+  t.reference_id,
+  o.mol1_seq,
+  classes.taxon_curie(o.organism_id),
+  o.mol1_source_id,
+  o.mol2_source_id
+FROM upstream.tcell t
+INNER JOIN upstream.object o
+  ON t.ivt_imm_object_id = o.object_id;
+
+
+SELECT CONCAT(current_time, ' Loading core.epitope ...');
 
 INSERT INTO core.epitope (
   epitope_id,
@@ -51,46 +76,8 @@ SELECT DISTINCT
 FROM upstream.curated_epitope ce
 INNER JOIN core.object o ON o.object_id = ce.e_object_id;
 
-INSERT INTO core.host (
-  sex,
-  age,
-  mhc_types_present,
-  reference_id,
-  taxon_curie,
-  location_curie
-)
-SELECT DISTINCT
-  h_sex,
-  h_age,
-  h_mhc_types_present,
-  reference_id,
-  classes.taxon_curie(h_organism_id),
-  as_location
-FROM upstream.tcell;
 
-INSERT INTO core.tcell_host (
-  tcell_id,
-  host_id
-)
-SELECT
-  t.tcell_id,
-  h.host_id
-FROM upstream.tcell t
-INNER JOIN core.host h
-  -- If one variable is null in an '=' comparison, the comparison evaluates to null,
-  -- so we need to explicitly check for this:
-  ON (h.sex = t.h_sex
-        OR (h.sex IS NULL AND t.h_sex IS NULL))
-      AND (h.age = t.h_age
-        OR (h.age IS NULL AND t.h_age IS NULL))
-      AND (h.mhc_types_present = t.h_mhc_types_present
-        OR (h.mhc_types_present IS NULL AND t.h_mhc_types_present IS NULL))
-      AND (h.reference_id = t.reference_id
-        OR (h.reference_id IS NULL AND t.reference_id IS NULL))
-      AND (h.taxon_curie = classes.taxon_curie(t.h_organism_id)
-        OR h.taxon_curie IS NULL AND classes.taxon_curie(t.h_organism_id) IS NULL)
-      AND (h.location_curie = t.as_location
-        OR (h.location_curie IS NULL AND t.as_location IS NULL));
+SELECT CONCAT(current_time, ' Loading core.process ...');
 
 INSERT INTO core.process (
   reference_id,
@@ -118,6 +105,7 @@ SELECT DISTINCT
 FROM tcell
 WHERE iv1_process_type IS NOT null;
 
+
 INSERT INTO core.process (
   reference_id,
   process_type,
@@ -133,6 +121,64 @@ SELECT DISTINCT
   ivt_con_object_id
 FROM tcell
 WHERE ivt_process_type IS NOT null;
+
+
+SELECT CONCAT(current_time, ' Loading core.host ...');
+
+INSERT INTO core.host (
+  sex,
+  age,
+  mhc_types_present,
+  reference_id,
+  taxon_curie,
+  location_curie
+)
+SELECT DISTINCT
+  h_sex,
+  h_age,
+  h_mhc_types_present,
+  reference_id,
+  classes.taxon_curie(h_organism_id),
+  as_location
+FROM upstream.tcell;
+
+
+SELECT CONCAT(current_time, ' Creating temporary table tcell_host ...');
+
+CREATE TEMP TABLE tcell_host AS
+SELECT
+  t.tcell_id,
+  h.host_id
+FROM upstream.tcell t
+INNER JOIN core.host h
+  -- If one variable is null in an '=' comparison, the comparison evaluates to null,
+  -- so we need to explicitly check for this:
+  ON (h.sex = t.h_sex
+        OR (h.sex IS NULL AND t.h_sex IS NULL))
+      AND (h.age = t.h_age
+        OR (h.age IS NULL AND t.h_age IS NULL))
+      AND (h.mhc_types_present = t.h_mhc_types_present
+        OR (h.mhc_types_present IS NULL AND t.h_mhc_types_present IS NULL))
+      AND (h.reference_id = t.reference_id
+        OR (h.reference_id IS NULL AND t.reference_id IS NULL))
+      AND (h.taxon_curie = classes.taxon_curie(t.h_organism_id)
+        OR h.taxon_curie IS NULL AND classes.taxon_curie(t.h_organism_id) IS NULL)
+      AND (h.location_curie = t.as_location
+        OR (h.location_curie IS NULL AND t.as_location IS NULL))
+ORDER BY t.tcell_id;
+
+
+SELECT CONCAT(current_time, ' Adding immunogen_object_id columns to core.assay ...');
+
+ALTER TABLE core.assay
+  ADD COLUMN iv1_immunogen_object_id integer,
+  ADD COLUMN ivt_immunogen_object_id integer;
+
+CREATE INDEX iv1_immunogen_object_idx ON core.assay (iv1_immunogen_object_id);
+CREATE INDEX ivt_immunogen_object_idx ON core.assay (ivt_immunogen_object_id);
+
+
+SELECT CONCAT(current_time, ' Loading core.assay ...');
 
 INSERT INTO core.assay (
   assay_type,
@@ -181,7 +227,10 @@ SELECT DISTINCT
   t.ivt_imm_object_id
 FROM upstream.tcell t
 INNER JOIN upstream.assay_type a ON t.as_type_id = a.assay_type_id
-INNER JOIN core.tcell_host th ON th.tcell_id = t.tcell_id;
+INNER JOIN tcell_host th ON th.tcell_id = t.tcell_id;
+
+
+SELECT CONCAT(current_time, ' Adding process_id info to core.assay ...');
 
 UPDATE core.assay a
 SET iv1_process_id = (
@@ -198,3 +247,13 @@ SET ivt_process_id = (
   WHERE p.immunogen_object_id = a.ivt_immunogen_object_id
   LIMIT 1
 );
+
+
+SELECT CONCAT(current_time, ' Dropping immunogen_object_id columns from core.assay ...');
+
+ALTER TABLE core.assay
+  DROP COLUMN iv1_immunogen_object_id,
+  DROP COLUMN ivt_immunogen_object_id;
+
+
+SELECT CONCAT(current_time, ' Done!');

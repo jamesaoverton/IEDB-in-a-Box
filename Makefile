@@ -21,5 +21,5 @@ refresh_postgres_upstream:
 	pgloader tools/pgload_recipe.sql
 
 refresh_core:
-	psql -U iedbadmin -d iedb -1 -f schemas/core.sql
-	psql -U iedbadmin -d iedb -1 -f populate_core.sql
+	psql -U iedbadmin -d iedb -t -1 -f schemas/core.sql
+	psql -U iedbadmin -d iedb -t -1 -f populate_core.sql

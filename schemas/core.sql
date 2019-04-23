@@ -3,10 +3,7 @@ CREATE SCHEMA core;
 
 
 CREATE TABLE core.object (
-  object_id serial PRIMARY KEY,
-  epitope_object_id integer NOT NULL,
-  iv1_imm_object_id integer,
-  ivt_imm_object_id integer,
+  object_id integer PRIMARY KEY,
   object_type text,
   reference_id integer NOT NULL,
   sequence text,
@@ -14,11 +11,6 @@ CREATE TABLE core.object (
   molecule_id integer,
   source_molecule_id integer
 );
-
-CREATE INDEX epitope_object_idx on core.object (epitope_object_id);
-CREATE INDEX iv1_imm_object_idx on core.object (iv1_imm_object_id);
-CREATE INDEX ivt_imm_object_idx on core.object (ivt_imm_object_id);
-
 
 CREATE TABLE core.epitope (
   epitope_id integer primary key,
@@ -45,11 +37,6 @@ CREATE TABLE core.host (
 
 CREATE UNIQUE INDEX host_idx ON core.host
 (sex, age, mhc_types_present, reference_id, taxon_curie, location_curie);
-
-CREATE TABLE core.tcell_host (
-  tcell_id integer PRIMARY KEY,
-  host_id integer
-);
 
 CREATE TABLE core.process (
   process_id serial PRIMARY KEY,
@@ -84,14 +71,9 @@ CREATE TABLE core.assay (
   ivt_immunogen_epitope_relation text,
   immunization_comments text,
   antigen_conformation text,
-  reference_id integer, -- NOT NULL,
-  epitope_id integer, -- NOT NULL,
-  host_id integer, -- NOT NULL,
-  iv1_immunogen_object_id integer,
-  ivt_immunogen_object_id integer,
-  iv1_process_id integer, -- NOT NULL,
-  ivt_process_id integer -- NOT NULL
+  reference_id integer NOT NULL,
+  epitope_id integer NOT NULL,
+  host_id integer NOT NULL,
+  iv1_process_id integer,
+  ivt_process_id integer
 );
-
-CREATE INDEX iv1_immunogen_object_idx ON core.assay (iv1_immunogen_object_id);
-CREATE INDEX ivt_immunogen_object_idx ON core.assay (ivt_immunogen_object_id);
