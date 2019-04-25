@@ -7,7 +7,7 @@ CREATE TABLE core.object (
   object_type text,
   reference_id integer NOT NULL,
   sequence text,
-  organism_id text,
+  taxon_curie text,
   molecule_id integer,
   source_molecule_id integer
 );

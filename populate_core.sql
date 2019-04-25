@@ -5,7 +5,7 @@ INSERT INTO core.object (
   object_type,
   reference_id,
   sequence,
-  organism_id,
+  taxon_curie,
   molecule_id,
   source_molecule_id
 )
