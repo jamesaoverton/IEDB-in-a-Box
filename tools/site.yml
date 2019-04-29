@@ -16,6 +16,17 @@
       service: name=mariadb state=restarted
 
   tasks:
+    # Required to install python 3
+    - name: Install IUS repository setup script
+      get_url:
+        url: https://setup.ius.io/
+        dest: /opt/setup-ius.sh
+
+    - name: Run IUS repository setup script
+      command: bash /opt/setup-ius.sh
+      args:
+        creates: /etc/yum.repos.d/ius.repo
+
     - name: Install needed software packages
       yum: name={{ item }} state=latest
       with_items:
@@ -30,6 +41,16 @@
         - postgresql-server
         - postgresql
         - python-psycopg2
+        - python36
+        - python36-psycopg2
+        - python36-pip
+
+    - name: Install further python 3 modules using pip
+      pip:
+        executable: pip3
+        name:
+          - flask
+          - openpyxl
 
     - name: Initialise the PostgreSQL db
       command: postgresql-setup initdb
@@ -95,6 +116,7 @@
     - name: Clone pgloader git repository
       git:
         repo: https://github.com/dimitri/pgloader.git
+        version: v3.6.1
         dest: /opt/pgloader
 
     - name: Install CentOS 7 pgloader dependencies
