@@ -12,6 +12,8 @@ CREATE TABLE core.object (
   source_molecule_id integer
 );
 
+CREATE INDEX reference_idx on core.object (reference_id);
+
 CREATE TABLE core.epitope (
   epitope_id integer primary key,
   reference_id integer,
