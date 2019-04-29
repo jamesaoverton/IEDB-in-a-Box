@@ -1,0 +1,56 @@
+upstream,core
+"curated_epitope.e_object_id, tcell.iv1_imm_object_id, tcell.ivt_imm_object_id",object.object_id
+object.object_type,object.object_type
+tcell.reference_id,object.reference_id
+object.mol1_seq,object.sequence
+object.organism_id,object.taxon_curie
+object.mol1_source_id,object.molecule_id
+object.mol2_source_id,object.source_molecule_id
+curated_epitope.curated_epitope_id,epitope.epitope_id
+curated_epitope.reference_id,epitope.reference_id
+object.object_id,epitope.object_id
+curated_epitope.e_name,epitope.name
+curated_epitope.e_location,epitope.location
+curated_epitope.e_comments,epitope.comments
+curated_epitope.e_ev,epitope.evidence
+curated_epitope.e_ref_start,epitope.region_start
+curated_epitope.e_ref_end,epitope.region_end
+curated_epitope.e_region_domain_flag,epitope.region_domain_flag
+,host.host_id
+tcell.h_sex,host.sex
+tcell.h_age,host.age
+tcell.h_mhc_types_present,host.mhc_types_present
+tcell.reference_id,host.reference_id
+tcell.h_organism_id,host.taxon_curie
+tcell.as_location,host.location_curie
+,process.process_id
+tcell.reference_id,process.reference_id
+"tcell.iv1_process_type, tcell.ivt_process_type",process.process_type
+tcell.iv1_adjutants,process.adjuvants
+tcell.iv1_route,process.route
+icell.iv1_dose_schedule,process.dose_schedule
+tcell.iv1_disease_id,process.disease_curie
+tcell.iv1_disease_stage,process.disease_stage
+"tcell.iv1_imm_ev, tcell.ivt_imm_ev",process.immunogen_evidence
+"tcell.iv1_imm_object_id, tcell.ivt_imm_object_id",process.immunogen_object_id
+"tcell.iv1_con_object_id, tcell.ivt_con_object_id",process.immunogen_containing_object_id
+,assay.assay_id
+assay_type.assay_type,assay.assay_type
+,assay.supertype
+tcell.as_location,assay.location
+tcell.as_comments,assay.comments
+?,assay.qualitative_measurement
+?,assay.quantitative_measurement
+tcell.as_inequality,assay.inequality
+tcell.as_num_subjects,assay.subjects_tested
+tcell.as_num_responded,assay.subjects_responded
+tcell.as_response_frequency,assay.response_frequency
+?,assay.iv1_immunogen_epitope_relation
+?,assay.ivt_immunogen_epitope_relation
+tcell.as_immunization_comments,assay.immunization_comments
+tcell.ant_ref_name,assay.antigen_conformation
+tcell.reference_id,assay.reference_id
+tcell.curated_epitope_id,assay.epitope_id
+,assay.host_id
+,assay.iv1_process_id
+,assay.ivt_process_id
