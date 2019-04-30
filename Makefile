@@ -1,6 +1,7 @@
-.PHONY: refresh clean rdump restore_upstream_maria restore_upstream_postgres
+.PHONY: error clean rdump restore_upstream_maria restore_upstream_postgres populate_postgres
 
-refresh: rdump restore_upstream_maria restore_upstream_postgres populate_postgres
+error:
+	@echo "Please specify a specific target"
 
 clean:
 	rm -Rf remote_dumps
