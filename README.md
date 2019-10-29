@@ -7,6 +7,11 @@ For more information on how the `upstream` schema is mapped to `core`, see [this
 
 ## Installation
 
+1. Make sure you have the correct Vagrant plugins installed:
+
+    `vagrant plugin install vagrant-vbguest`
+    `vagrant vbguest`
+
 1. Clone the repository to a local folder on your computer. For example, using the SSH method:
 
     `git clone git@github.com:jamesaoverton/IEDB-in-a-Box.git`
